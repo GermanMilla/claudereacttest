@@ -1,27 +1,18 @@
 import { useState } from 'react'
-import { useDispatch } from 'react-redux'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { Google as GoogleIcon } from '@mui/icons-material'
 import { auth } from '../../firebase/config'
-import { login } from '../../store/authSlice'
 import './Login.css'
 
 function Login() {
-  const dispatch = useDispatch()
   const [error, setError] = useState('')
 
   const handleGoogleLogin = async () => {
     setError('')
     try {
       const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
-      const user = result.user
-      dispatch(login({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-      }))
+      await signInWithPopup(auth, provider)
+
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError(err.message)
