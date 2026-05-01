@@ -1,7 +1,5 @@
-import { signOut } from 'firebase/auth'
-import { auth } from '../../firebase/config'
-import { logout } from '../../store/authSlice'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector } from 'react-redux'
+import { useLogout } from '../../hooks/useLogout'
 import heroImg from '../../assets/hero.png'
 import reactLogo from '../../assets/react.svg'
 import viteLogo from '../../assets/vite.svg'
@@ -9,12 +7,7 @@ import Navbar from '../Navbar/Navbar'
 
 function Home() {
     const { user } = useSelector((state) => state.auth)
-    const dispatch = useDispatch()
-
-    const handleLogout = async () => {
-        await signOut(auth)
-        dispatch(logout())
-    }
+    const handleLogout = useLogout()
 
     return (
     
