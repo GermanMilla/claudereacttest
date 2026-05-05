@@ -27,3 +27,12 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Firebase CLI local files
+.firebase/
+.firebaserc
+
+# Temporary files
+*.tmp
+.cache/
+.eslintcache

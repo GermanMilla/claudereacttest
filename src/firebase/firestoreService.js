@@ -1,4 +1,4 @@
-import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, getDocs, query, onSnapshot  } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, getDocs, query, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from './config';
 
 /**
@@ -70,6 +70,23 @@ export async function updateDocument(collectionName, docId, data) {
     await updateDoc(docRef, data);
   } catch (error) {
     console.error(`Error updating document ${docId} in ${collectionName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Creates or merges a document in a specified collection.
+ * @param {string} collectionName - The name of the collection.
+ * @param {string} docId - The ID of the document to create or update.
+ * @param {object} data - The data to set.
+ * @returns {Promise<void>}
+ */
+export async function setDocument(collectionName, docId, data) {
+  try {
+    const docRef = doc(db, collectionName, docId);
+    await setDoc(docRef, data, { merge: true });
+  } catch (error) {
+    console.error(`Error setting document ${docId} in ${collectionName}:`, error);
     throw error;
   }
 }
