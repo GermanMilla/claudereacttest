@@ -56,6 +56,7 @@ body {
 
 #root {
   width: 1126px;
+  background-color: #cfcfcd;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;

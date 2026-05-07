@@ -39,9 +39,9 @@ function Navbar({ user }) {
   const handleLogout = useLogout();
 
   return (
-    <AppBar position="static" sx={{ bgcolor: 'black', height: '48px' }}>
+    <AppBar position="static" sx={{ bgcolor: '#286730', height: '40px' }}>
       <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ minHeight: '48px !important', px: 2 }}>
+        <Toolbar disableGutters sx={{ minHeight: '40px !important', px: 2 }}>
           <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
           <Typography
             variant="h6"
@@ -51,9 +51,9 @@ function Navbar({ user }) {
             sx={{
               mr: 2,
               display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
+              fontFamily: 'Nunito Sans, sans-serif',
+              fontWeight: 400,
+              letterSpacing: '.2rem',
               color: 'inherit',
               textDecoration: 'none',
             }}
@@ -132,7 +132,7 @@ function Navbar({ user }) {
               </IconButton>
             </Tooltip>
             <Menu
-              sx={{ mt: '45px' }}
+              sx={{ mt: '35px' }}
               id="menu-appbar"
               anchorEl={anchorElUser}
               anchorOrigin={{

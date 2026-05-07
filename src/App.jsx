@@ -7,34 +7,35 @@ import './App.css'
 import Home from './components/Home/Home'
 
 function App() {
-  const { user } = useSelector((state) => state.auth)
+  const { user, authReady } = useSelector((state) => state.auth)
 
   return (
-    
     <BrowserRouter>
       <PersistAuth />
-      <Routes>
-        <Route
-          path="/"
-          element={
-              user
-                ? <Navigate to="/home" replace />
-                : <Navigate to="/login" replace />
-          }
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/home" replace /> : <Login />}
-        />
-      </Routes>
+      {!authReady ? (
+        <div className="app-loading"></div>
+      ) : (
+        <Routes>
+          <Route
+            path="/"
+            element={
+              user ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/home" replace /> : <Login />}
+          />
+        </Routes>
+      )}
     </BrowserRouter>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useDispatch } from 'react-redux'
 import { auth } from '../firebase/config'
-import { login, logout } from '../store/authSlice'
+import { login, logout, setAuthReady } from '../store/authSlice'
 
 function PersistAuth() {
   const dispatch = useDispatch()
@@ -19,6 +19,7 @@ function PersistAuth() {
       } else {
         dispatch(logout())
       }
+      dispatch(setAuthReady())
     })
 
     return () => unsubscribe()
