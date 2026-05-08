@@ -39,7 +39,7 @@ function Home() {
 
         const unsubscribe = listenToDocument(
             'Users',
-            user.uid,
+            user.uid ,
             (data) => {
                 if (data) {
                     dispatch(setProfile(data))
@@ -96,7 +96,7 @@ function Home() {
 
     return (
     <>
-        <Navbar user={user} />
+        
 
         <section id="center">
 
