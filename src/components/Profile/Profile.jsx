@@ -9,16 +9,19 @@ import {
   Paper,
   Avatar,
   Divider,
-  Stack
+  Stack,
+  Grid,
+  Chip,
+  Link,
+  Button
 } from '@mui/material'
 
 function Profile() {
   const { uid } = useParams()
-  const { user } = useSelector((state) => state.auth)
   const profileData = useSelector((state) => state.profile.profile)
   const [profileLoaded, setProfileLoaded] = useState(false)
-
   const dispatch = useDispatch()
+
   useEffect(() => {
     if (!uid) {
       dispatch(clearProfile())
@@ -47,94 +50,202 @@ function Profile() {
     return () => unsubscribe()
   }, [uid, dispatch])
 
-  const formatValue = (value) => {
-    if (value === null || value === undefined || value === '') {
-      return 'Not provided'
-    }
+  const asArray = (value) => (Array.isArray(value) ? value : [])
 
-    if (typeof value === 'object') {
-      return JSON.stringify(value)
-    }
-
-    return String(value)
+  const renderItems = (items) => {
+    return asArray(items).map((item, index) => (
+      <Box key={index} sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          {item.title || item.role || item.school || item.name || 'Untitled'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+          {item.company || item.location || item.date || item.year || ''}
+        </Typography>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+          {item.details || item.description || item.summary || ''}
+        </Typography>
+      </Box>
+    ))
   }
 
   return (
-    <>
-      <section id="center">
-        <Paper
-          elevation={3}
-          sx={{ mt: 4, p: 3, width: '100%', maxWidth: 650, borderRadius: 4 }}
-        >
-
-          {profileData && (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+    <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+      <Paper
+        elevation={3}
+        sx={{ width: '100%', maxWidth: 1100, p: { xs: 3, md: 4 }, borderRadius: 4 }}
+      >
+        {profileData ? (
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ textAlign: 'center', mb: 4 }}>
                 <Avatar
                   src={profileData.photoURL || ''}
-                  alt={profileData.name || 'User'}
-                  sx={{ width: 80, height: 80, fontSize: 32, bgcolor: '#d97757' }}
+                  alt={profileData.name || 'Profile'}
+                  sx={{ width: 120, height: 120, mx: 'auto', mb: 2, fontSize: 48, bgcolor: '#286730' }}
                 >
                   {profileData.name?.charAt(0) || 'U'}
                 </Avatar>
-
-                <Box>
-                  <Typography variant="h5" fontWeight="bold">
-                    {profileData.name || 'User Profile'}
-                  </Typography>
+                <Typography variant="h4" fontWeight="bold" gutterBottom>
+                  {profileData.name || 'Your Name'}
+                </Typography>
+                <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                  {profileData.title || 'Full Stack Developer'}
+                </Typography>
+                {profileData.location && (
                   <Typography variant="body2" color="text.secondary">
-                    {profileData.email || 'No email available'}
+                    {profileData.location}
                   </Typography>
-                </Box>
+                )}
               </Box>
 
               <Divider sx={{ mb: 3 }} />
 
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Profile Details
-              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Contact
+                </Typography>
+                <Typography variant="body2">{profileData.email || 'Email not set'}</Typography>
+                {profileData.phone && <Typography variant="body2">{profileData.phone}</Typography>}
+                {profileData.website && (
+                  <Link href={profileData.website} target="_blank" rel="noopener" display="block">
+                    {profileData.website}
+                  </Link>
+                )}
+              </Box>
 
-              <Stack spacing={1.5}>
-                {Object.entries(profileData).map(([key, value]) => (
-                  <Box
-                    key={key}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 2,
-                      py: 1,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider'
-                    }}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Skills
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1}>
+                  {asArray(profileData.skills).length > 0 ? (
+                    asArray(profileData.skills).map((skill) => (
+                      <Chip key={skill} label={skill} size="small" />
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Add skills in Firestore to show them here.
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Links
+                </Typography>
+                {profileData.social?.linkedin && (
+                  <Link
+                    href={profileData.social.linkedin}
+                    target="_blank"
+                    rel="noopener"
+                    display="block"
+                    sx={{ mb: 1 }}
                   >
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ textTransform: 'capitalize', minWidth: 140 }}
-                    >
-                      {key}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight={500}
-                      sx={{ textAlign: 'right', wordBreak: 'break-word' }}
-                    >
-                      {formatValue(value)}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </>
-          )}
+                    LinkedIn
+                  </Link>
+                )}
+                {profileData.social?.github && (
+                  <Link
+                    href={profileData.social.github}
+                    target="_blank"
+                    rel="noopener"
+                    display="block"
+                    sx={{ mb: 1 }}
+                  >
+                    GitHub
+                  </Link>
+                )}
+                {profileData.social?.portfolio && (
+                  <Link
+                    href={profileData.social.portfolio}
+                    target="_blank"
+                    rel="noopener"
+                    display="block"
+                  >
+                    Portfolio
+                  </Link>
+                )}
+              </Box>
 
-          {profileLoaded && !profileData && (
-            <Typography variant="body1" color="error.main">
-              Profile not found. Please verify the UID and try again.
-            </Typography>
-          )}
-        </Paper>
-      </section>
-    </>
+              {profileData.resumeURL && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    component="a"
+                    href={profileData.resumeURL}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Download CV
+                  </Button>
+                </Box>
+              )}
+            </Grid>
+
+            <Grid item xs={12} md={8}>
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" fontWeight={700} gutterBottom>
+                  Summary
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+                  {profileData.summary ||
+                    'Write a short professional summary that highlights your experience, technical strengths, and career goals.'}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" fontWeight={700} gutterBottom>
+                  Experience
+                </Typography>
+                {asArray(profileData.experience).length > 0 ? (
+                  renderItems(profileData.experience)
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add work experience entries in Firestore to show them here.
+                  </Typography>
+                )}
+              </Box>
+
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" fontWeight={700} gutterBottom>
+                  Education
+                </Typography>
+                {asArray(profileData.education).length > 0 ? (
+                  renderItems(profileData.education)
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add education entries in Firestore to show them here.
+                  </Typography>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="h5" fontWeight={700} gutterBottom>
+                  Projects
+                </Typography>
+                {asArray(profileData.projects).length > 0 ? (
+                  renderItems(profileData.projects)
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Add portfolio projects in Firestore to show them here.
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        ) : profileLoaded ? (
+          <Typography variant="body1" color="error.main">
+            Profile not found. Please verify the UID and try again.
+          </Typography>
+        ) : (
+          <Typography variant="body1" color="text.secondary">
+            Loading profile...
+          </Typography>
+        )}
+      </Paper>
+    </Box>
   )
 }
 
