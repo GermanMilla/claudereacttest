@@ -22,9 +22,22 @@ function Login() {
 
   return (
     <div className="login-container">
+      <section className="login-hero">
+        <span className="login-pill">Freelance talent from El Salvador</span>
+        <h1>Talento SV</h1>
+        <p>
+          Build a competency-first profile, show proof of work, and let clients view your
+          public profile without an account.
+        </p>
+        <div className="login-highlights" aria-label="Platform highlights">
+          <span>Skills</span>
+          <span>Projects</span>
+          <span>Local trust</span>
+        </div>
+      </section>
       <div className="login-card">
-        <h1 className="login-title">Welcome</h1>
-        <p className="login-subtitle">Sign in to continue</p>
+        <h2 className="login-title">Create your profile</h2>
+        <p className="login-subtitle">Sign in to manage your Salvadoran freelance portfolio.</p>
 
         {error && <p className="login-error">{error}</p>}
 

@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react'
-import { listenToDocument, setDocument } from '../../firebase/firestoreService'
 import { useSelector, useDispatch } from 'react-redux'
-import { setProfile, clearProfile, profileError } from '../../store/profileSlice'
 import {
-  Typography,
-  Box,
-  Paper,
+  AlternateEmail,
+  CheckCircle,
+  LocationOn,
+  Public,
+  Save,
+  Work
+} from '@mui/icons-material'
+import {
   Avatar,
-  Divider,
+  Box,
+  Button,
   Chip,
+  Divider,
+  Grid,
+  Link,
+  Paper,
   Stack,
   TextField,
-  Button,
-  Grid,
-  Link
+  Typography
 } from '@mui/material'
+import { listenToDocument, setDocument } from '../../firebase/firestoreService'
+import { setProfile, clearProfile, profileError } from '../../store/profileSlice'
+import { svGradients, svPalette } from '../../styles/designTokens'
 
 function Home() {
   const { user } = useSelector((state) => state.auth)
@@ -80,257 +89,402 @@ function Home() {
   }
 
   const asArray = (value) => (Array.isArray(value) ? value : [])
+  const name = user?.displayName || userData?.name || 'Freelancer SV'
+  const initials = name.charAt(0).toUpperCase()
+  const skills = asArray(userData?.skills)
+  const experience = asArray(userData?.experience)
+  const projects = asArray(userData?.projects)
+  const education = asArray(userData?.education)
+  const completedSections = [
+    userData?.summary,
+    skills.length,
+    experience.length,
+    projects.length,
+    userData?.email || user?.email
+  ].filter(Boolean).length
 
-  const renderItems = (items) =>
-    asArray(items).map((item, index) => (
-      <Box key={index} sx={{ mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {item.title || item.role || item.school || item.name || 'Untitled'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
-          {item.company || item.location || item.date || item.year || ''}
-        </Typography>
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-          {item.details || item.description || item.summary || ''}
-        </Typography>
-      </Box>
-    ))
+  const sectionCardSx = {
+    p: 2.5,
+    borderRadius: 2,
+    border: '1px solid #e4ecf7',
+    bgcolor: 'white'
+  }
 
-  return (
-    <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
-      <Paper elevation={3} sx={{ width: '100%', maxWidth: 1100, p: { xs: 3, md: 4 }, borderRadius: 4 }}>
-        {userData ? (
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={8}>
-              <Box sx={{ mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <Avatar
-                    src={user?.photoURL || userData.photoURL || ''}
-                    alt={user?.displayName || userData.name || 'User'}
-                    sx={{ width: 100, height: 100, fontSize: 40, bgcolor: '#286730' }}
-                  >
-                    {(user?.displayName || userData.name || 'User').charAt(0).toUpperCase()}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold">
-                      {user?.displayName || userData.name || 'Your Name'}
-                    </Typography>
-                    <Typography variant="subtitle1" color="text.secondary">
-                      {userData.title || 'Full Stack Developer'}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {userData.location || 'Location not set'}
-                    </Typography>
-                  </Box>
-                </Box>
+  const emptyBlock = (text) => (
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        bgcolor: '#f7faf8',
+        border: '1px dashed rgba(77, 102, 33, 0.28)'
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        {text}
+      </Typography>
+    </Box>
+  )
 
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Summary
-                </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                  {userData.summary || 'Add a professional summary in Firestore to make your homepage look like a portfolio.'}
-                </Typography>
-              </Box>
-
-              <Divider sx={{ mb: 4 }} />
-
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  Experience
-                </Typography>
-                {asArray(userData.experience).length > 0 ? (
-                  renderItems(userData.experience)
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Add work experience entries in Firestore to show them here.
-                  </Typography>
-                )}
-              </Box>
-
-              <Divider sx={{ mb: 4 }} />
-
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  Education
-                </Typography>
-                {asArray(userData.education).length > 0 ? (
-                  renderItems(userData.education)
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Add education entries in Firestore to show them here.
-                  </Typography>
-                )}
-              </Box>
-
-              <Divider sx={{ mb: 4 }} />
-
-              <Box>
-                <Typography variant="h5" fontWeight={700} gutterBottom>
-                  Projects
-                </Typography>
-                {asArray(userData.projects).length > 0 ? (
-                  renderItems(userData.projects)
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Add project entries in Firestore to show them here.
-                  </Typography>
-                )}
-              </Box>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                  Profile overview
-                </Typography>
-
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Email
-                  </Typography>
-                  <Typography variant="body1">{user?.email || userData.email || 'Not set'}</Typography>
-                </Box>
-
-                {userData.phone && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Phone
-                    </Typography>
-                    <Typography variant="body1">{userData.phone}</Typography>
-                  </Box>
-                )}
-
-                {userData.website && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Website
-                    </Typography>
-                    <Link href={userData.website} target="_blank" rel="noopener" underline="hover">
-                      {userData.website}
-                    </Link>
-                  </Box>
-                )}
-
-                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                  Skills
-                </Typography>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {asArray(userData.skills).length > 0 ? (
-                    asArray(userData.skills).map((skill) => <Chip key={skill} label={skill} size="small" />)
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Add skills in Firestore.
-                    </Typography>
-                  )}
-                </Stack>
-
-                <Divider sx={{ my: 3 }} />
-
-                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                  Links
-                </Typography>
-                {userData.social?.linkedin && (
-                  <Link href={userData.social.linkedin} target="_blank" rel="noopener" display="block" sx={{ mb: 0.75 }}>
-                    LinkedIn
-                  </Link>
-                )}
-                {userData.social?.github && (
-                  <Link href={userData.social.github} target="_blank" rel="noopener" display="block" sx={{ mb: 0.75 }}>
-                    GitHub
-                  </Link>
-                )}
-                {userData.social?.portfolio && (
-                  <Link href={userData.social.portfolio} target="_blank" rel="noopener" display="block">
-                    Portfolio
-                  </Link>
-                )}
-
-                {userData.resumeURL && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    href={userData.resumeURL}
-                    target="_blank"
-                    rel="noopener"
-                    fullWidth
-                    sx={{ mt: 3 }}
-                  >
-                    Download CV
-                  </Button>
-                )}
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 3, mt: 1 }}>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Quick profile update
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Add a new field to your Firestore profile without changing code. Use array fields for `skills`, `experience`, `education`, or `projects`.
-                </Typography>
-                <Stack spacing={2}>
-                  <TextField
-                    label="Profile field key"
-                    value={newFieldKey}
-                    onChange={(event) => setNewFieldKey(event.target.value)}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Profile field value"
-                    value={newFieldValue}
-                    onChange={(event) => setNewFieldValue(event.target.value)}
-                    fullWidth
-                  />
-                  {statusMessage && (
-                    <Typography variant="body2" color={statusMessage.includes('successfully') ? 'success.main' : 'error'}>
-                      {statusMessage}
-                    </Typography>
-                  )}
-                  <Button variant="contained" onClick={saveProfileField} disabled={saving}>
-                    {saving ? 'Saving…' : 'Save profile field'}
-                  </Button>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-        ) : profileMissing ? (
-          <Paper elevation={3} sx={{ p: 4, borderRadius: 4 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>
-              No profile found
+  const renderItems = (items, emptyText) =>
+    asArray(items).length > 0 ? (
+      <Stack spacing={2}>
+        {asArray(items).map((item, index) => (
+          <Box
+            key={`${item.title || item.role || item.name || index}-${index}`}
+            sx={{
+              borderLeft: `4px solid ${index % 2 === 0 ? svPalette.flagBlue : svPalette.mangoGreen}`,
+              pl: 2,
+              py: 0.5
+            }}
+          >
+            <Typography variant="subtitle1" fontWeight={800} color={svPalette.ink}>
+              {item.title || item.role || item.school || item.name || 'Untitled'}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              We didn't find a profile for your account. Add a profile field below to create your portfolio.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+              {[item.company, item.location, item.date || item.year].filter(Boolean).join(' | ')}
             </Typography>
-            <Stack spacing={2}>
-              <TextField
-                label="Profile field key"
-                value={newFieldKey}
-                onChange={(event) => setNewFieldKey(event.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Profile field value"
-                value={newFieldValue}
-                onChange={(event) => setNewFieldValue(event.target.value)}
-                fullWidth
-              />
-              {statusMessage && (
-                <Typography variant="body2" color={statusMessage.includes('successfully') ? 'success.main' : 'error'}>
-                  {statusMessage}
-                </Typography>
-              )}
-              <Button variant="contained" onClick={saveProfileField} disabled={saving}>
-                {saving ? 'Saving…' : 'Create profile field'}
-              </Button>
-            </Stack>
-          </Paper>
-        ) : (
-          <Typography variant="body1" color="text.secondary">
-            Loading home profile...
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: svPalette.mutedInk }}>
+              {item.details || item.description || item.summary || ''}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+    ) : (
+      emptyBlock(emptyText)
+    )
+
+  const updatePanel = (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        borderRadius: 2,
+        border: `1px solid ${svPalette.borderBlue}`,
+        bgcolor: 'rgba(255, 255, 255, 0.88)'
+      }}
+    >
+      <Typography variant="h6" fontWeight={900} color={svPalette.deepBlue}>
+        Quick profile update
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 2 }}>
+        Add one Firestore field while you keep shaping the prototype. Use keys like skills,
+        title, summary, location, projects, or experience.
+      </Typography>
+      <Stack spacing={2}>
+        <TextField
+          label="Profile field key"
+          value={newFieldKey}
+          onChange={(event) => setNewFieldKey(event.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Profile field value"
+          value={newFieldValue}
+          onChange={(event) => setNewFieldValue(event.target.value)}
+          fullWidth
+          multiline
+          minRows={2}
+        />
+        {statusMessage && (
+          <Typography
+            variant="body2"
+            color={statusMessage.includes('successfully') ? 'success.main' : 'error'}
+          >
+            {statusMessage}
           </Typography>
         )}
-      </Paper>
+        <Button
+          variant="contained"
+          startIcon={<Save />}
+          onClick={saveProfileField}
+          disabled={saving}
+          sx={{
+            alignSelf: { xs: 'stretch', sm: 'flex-start' },
+            bgcolor: svPalette.flagBlue,
+            textTransform: 'none',
+            fontWeight: 800,
+            borderRadius: 2,
+            px: 3,
+            '&:hover': { bgcolor: svPalette.deepBlue }
+          }}
+        >
+          {saving ? 'Saving...' : 'Save profile field'}
+        </Button>
+      </Stack>
+    </Paper>
+  )
+
+  return (
+    <Box
+      sx={{
+        minHeight: 'calc(100svh - 64px)',
+        px: { xs: 2, md: 4 },
+        py: { xs: 3, md: 5 },
+        background: svGradients.page
+      }}
+    >
+      {userData ? (
+        <Box sx={{ width: '100%', maxWidth: 1180, mx: 'auto' }}>
+          <Paper
+            elevation={0}
+            sx={{
+              overflow: 'hidden',
+              borderRadius: 3,
+              border: `1px solid ${svPalette.borderBlue}`,
+              bgcolor: 'white'
+            }}
+          >
+            <Box
+              sx={{
+                p: { xs: 2, md: 4 },
+                color: 'white',
+                background: svGradients.flagHeader,
+                position: 'relative'
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 'auto 24px 24px auto',
+                  width: 180,
+                  height: 180,
+                  borderRadius: '50%',
+                  border: '24px solid rgba(247, 226, 161, 0.24)'
+                }}
+              />
+  
+                <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
+                  <Grid item>
+                    <Avatar
+                      src={user?.photoURL || userData.photoURL || ''}
+                      alt={name}
+                      sx={{
+                        width: { xs: 88, md: 112 },
+                        height: { xs: 88, md: 112 },
+                        fontSize: 44,
+                        bgcolor: svPalette.pupusaCorn,
+                        color: svPalette.deepBlue,
+                        border: '4px solid rgba(255,255,255,0.92)'
+                      }}
+                    >
+                      {initials}
+                    </Avatar>
+                  </Grid>
+                  <Grid item xs={12} sm>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2" fontWeight={950}>
+                        Available for freelance work
+                      </Typography>
+                      <Chip
+                        label="El Salvador talent"
+                        size="small"
+                        sx={{
+                          height: 24,
+                          bgcolor: 'rgba(255,255,255,0.2)',
+                          color: 'white',
+                          fontWeight: 900
+                        }}
+                      />
+                    </Stack>
+                    <Typography
+                      variant="h2"
+                      component="h1"
+                      fontWeight={500}
+                      sx={{ lineHeight: 1, letterSpacing: 0, textShadow: '0 1px 0 rgba(11,47,102,0.28)' }}
+                    >
+                      {name}
+                    </Typography>
+                    <Typography variant="h6" sx={{ opacity: 0.98, mt: 1.5, fontWeight: 500 }}>
+                      {userData.title || 'Competency-based freelancer'}
+                    </Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2.5 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <LocationOn fontSize="small" />
+                        <Typography variant="body2">{userData.location || 'El Salvador'}</Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <AlternateEmail fontSize="small" />
+                        <Typography variant="body2">{user?.email || userData.email || 'Email pending'}</Typography>
+                      </Stack>
+                    </Stack>
+                  </Grid>
+                </Grid>
+
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 320px' },
+                alignItems: 'stretch'
+              }}
+            >
+              <Box sx={{ p: { xs: 3, md: 4 }, pt: { md: 4.5 } }}>
+                <Stack spacing={4}>
+                  <Box>
+                    <Typography
+                      variant="overline"
+                      fontWeight={500}
+                      color={svPalette.ink}
+                      sx={{ letterSpacing: 1.4 }}
+                    >
+                      Profile pitch
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 1, color: svPalette.mutedInk, whiteSpace: 'pre-line' }}>
+                      {userData.summary ||
+                        'Add a focused summary that explains what you solve, the competencies you bring, and the kind of clients you help.'}
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  <Box>
+                    <Typography variant="h5" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
+                      Work experience
+                    </Typography>
+                    {renderItems(
+                      experience,
+                      'Add experience entries to help clients understand your real-world practice.'
+                    )}
+                  </Box>
+
+                  <Box>
+                    <Typography variant="h5" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
+                      Projects
+                    </Typography>
+                    {renderItems(projects, 'Add portfolio projects that show outcomes, tools, and client value.')}
+                  </Box>
+
+                  <Box>
+                    <Typography variant="h5" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
+                      Education
+                    </Typography>
+                    {renderItems(education, 'Add education, certifications, bootcamps, or local training.')}
+                  </Box>
+                </Stack>
+              </Box>
+
+              <Box
+                sx={{
+                  p: { xs: 3, md: 4 },
+                  pt: { md: 4.5 },
+                  bgcolor: '#f6fbfc',
+                  borderTop: { xs: '1px solid rgba(21, 88, 214, 0.1)', md: 0 },
+                  borderLeft: { md: '1px solid rgba(21, 88, 214, 0.12)' }
+                }}
+              >
+                <Stack spacing={3}>
+                  <Paper elevation={0} sx={sectionCardSx}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Profile strength
+                        </Typography>
+                        <Typography variant="h4" fontWeight={950} color={svPalette.deepBlue}>
+                          {completedSections}/5
+                        </Typography>
+                      </Box>
+                      <CheckCircle sx={{ color: svPalette.mangoGreen, fontSize: 38 }} />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Keep it compact: the strongest profiles show a sharp pitch, skills, proof,
+                      contact, and location.
+                    </Typography>
+                  </Paper>
+
+                  <Paper elevation={0} sx={sectionCardSx}>
+                    <Typography variant="subtitle1" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
+                      Competencies
+                    </Typography>
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {skills.length > 0 ? (
+                        skills.map((skill, index) => (
+                          <Chip
+                            key={skill}
+                            label={skill}
+                            sx={{
+                              bgcolor:
+                                index % 3 === 0 ? svPalette.pupusaCorn : index % 3 === 1 ? '#e6f5f8' : '#eef3e1',
+                              color: svPalette.deepBlue,
+                              fontWeight: 800,
+                              borderRadius: 1.5
+                            }}
+                          />
+                        ))
+                      ) : (
+                        emptyBlock('Add skills in Firestore.')
+                      )}
+                    </Stack>
+                  </Paper>
+
+                  <Paper elevation={0} sx={sectionCardSx}>
+                    <Typography variant="subtitle1" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
+                      Contact and links
+                    </Typography>
+                    <Stack spacing={1}>
+                      <Typography variant="body2">{user?.email || userData.email || 'Email not set'}</Typography>
+                      {userData.phone && <Typography variant="body2">{userData.phone}</Typography>}
+                      {userData.website && (
+                        <Link href={userData.website} target="_blank" rel="noopener" underline="hover">
+                          <Public fontSize="inherit" sx={{ mr: 0.5, verticalAlign: 'text-bottom' }} />
+                          Website
+                        </Link>
+                      )}
+                      {userData.social?.linkedin && (
+                        <Link href={userData.social.linkedin} target="_blank" rel="noopener">
+                          LinkedIn
+                        </Link>
+                      )}
+                      {userData.social?.github && (
+                        <Link href={userData.social.github} target="_blank" rel="noopener">
+                          GitHub
+                        </Link>
+                      )}
+                      {userData.social?.portfolio && (
+                        <Link href={userData.social.portfolio} target="_blank" rel="noopener">
+                          Portfolio
+                        </Link>
+                      )}
+                    </Stack>
+                  </Paper>
+
+                  {userData.resumeURL && (
+                    <Button
+                      variant="contained"
+                      href={userData.resumeURL}
+                      target="_blank"
+                      rel="noopener"
+                      startIcon={<Work />}
+                      sx={{ bgcolor: svPalette.mangoGreen, textTransform: 'none', fontWeight: 900 }}
+                    >
+                      Download CV
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+            </Box>
+          </Paper>
+
+          <Box sx={{ mt: 3 }}>{updatePanel}</Box>
+        </Box>
+      ) : profileMissing ? (
+        <Box sx={{ maxWidth: 760, mx: 'auto' }}>
+          <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: 3, border: '1px solid #dbe7f6' }}>
+            <Typography variant="h4" fontWeight={950} color={svPalette.deepBlue} sx={{ mb: 1 }}>
+              Start your freelancer profile
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Create the first field for your competency-based profile. Clients will be able to
+              view public profiles without signing in.
+            </Typography>
+            {updatePanel}
+          </Paper>
+        </Box>
+      ) : (
+        <Typography variant="body1" color="text.secondary" textAlign="center">
+          Loading home profile...
+        </Typography>
+      )}
     </Box>
   )
 }
