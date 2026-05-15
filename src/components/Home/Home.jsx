@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import {
   AlternateEmail,
@@ -6,6 +6,7 @@ import {
   LocationOn,
   Public,
   Save,
+  Warning,
   Work
 } from '@mui/icons-material'
 import {
@@ -16,12 +17,15 @@ import {
   Divider,
   Grid,
   Link,
+  Modal,
   Paper,
+  Slider,
   Stack,
   TextField,
   Typography
 } from '@mui/material'
 import { listenToDocument, setDocument } from '../../firebase/firestoreService'
+import { uploadProfilePicture } from '../../firebase/storageService'
 import { setProfile, clearProfile, profileError } from '../../store/profileSlice'
 import { svGradients, svPalette } from '../../styles/designTokens'
 
@@ -33,9 +37,20 @@ function Home() {
   const [newFieldKey, setNewFieldKey] = useState('')
   const [newFieldValue, setNewFieldValue] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
+  const [photoStatusMessage, setPhotoStatusMessage] = useState('')
+  const [photoPreviewURL, setPhotoPreviewURL] = useState('')
+  const [photoDimensions, setPhotoDimensions] = useState(null)
+  const [cropZoom, setCropZoom] = useState(1)
+  const [cropOffsetX, setCropOffsetX] = useState(0)
+  const [cropOffsetY, setCropOffsetY] = useState(0)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const dispatch = useDispatch()
+  const dragStartRef = useRef(null)
+  const profilePictureSize = 512
 
   useEffect(() => {
     if (!user?.uid) {
@@ -64,6 +79,12 @@ function Home() {
     return () => unsubscribe()
   }, [user, dispatch])
 
+  useEffect(() => () => {
+    if (photoPreviewURL) {
+      URL.revokeObjectURL(photoPreviewURL)
+    }
+  }, [photoPreviewURL])
+
   const saveProfileField = async () => {
     if (!newFieldKey.trim()) {
       setStatusMessage('Please enter a profile key.')
@@ -88,9 +109,191 @@ function Home() {
     }
   }
 
+  const closeCropModal = () => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    setCropModalOpen(false)
+    setPhotoDimensions(null)
+    setCropZoom(1)
+    setCropOffsetX(0)
+    setCropOffsetY(0)
+    setIsDraggingPhoto(false)
+    dragStartRef.current = null
+
+    if (photoPreviewURL) {
+      URL.revokeObjectURL(photoPreviewURL)
+      setPhotoPreviewURL('')
+    }
+  }
+
+  const loadImageDimensions = (src) =>
+    new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+      image.onerror = reject
+      image.src = src
+    })
+
+  const getCroppedProfilePicture = () =>
+    new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = profilePictureSize
+        canvas.height = profilePictureSize
+
+        const context = canvas.getContext('2d')
+        const baseScale = Math.max(
+          profilePictureSize / image.naturalWidth,
+          profilePictureSize / image.naturalHeight
+        )
+        const scale = baseScale * cropZoom
+        const scaledWidth = image.naturalWidth * scale
+        const scaledHeight = image.naturalHeight * scale
+        const maxOffsetX = Math.max(0, (scaledWidth - profilePictureSize) / 2)
+        const maxOffsetY = Math.max(0, (scaledHeight - profilePictureSize) / 2)
+        const drawX = (profilePictureSize - scaledWidth) / 2 + (cropOffsetX / 100) * maxOffsetX
+        const drawY = (profilePictureSize - scaledHeight) / 2 + (cropOffsetY / 100) * maxOffsetY
+
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, profilePictureSize, profilePictureSize)
+        context.drawImage(image, drawX, drawY, scaledWidth, scaledHeight)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Could not prepare profile picture.'))
+            }
+          },
+          'image/jpeg',
+          0.9
+        )
+      }
+      image.onerror = reject
+      image.src = photoPreviewURL
+    })
+
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    event.target.blur()
+
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoStatusMessage('Please choose an image file.')
+      return
+    }
+
+    const previewURL = URL.createObjectURL(file)
+
+    try {
+      const dimensions = await loadImageDimensions(previewURL)
+
+      if (photoPreviewURL) {
+        URL.revokeObjectURL(photoPreviewURL)
+      }
+
+      setPhotoPreviewURL(previewURL)
+      setPhotoDimensions(dimensions)
+      setCropZoom(1)
+      setCropOffsetX(0)
+      setCropOffsetY(0)
+      setCropModalOpen(true)
+    } catch (error) {
+      console.error('Error loading profile picture preview:', error)
+      URL.revokeObjectURL(previewURL)
+      setPhotoStatusMessage('Could not open that image. Please try another file.')
+    }
+  }
+
+  const saveCroppedProfilePicture = async () => {
+    if (!photoPreviewURL) return
+
+    setUploadingPhoto(true)
+    setPhotoStatusMessage('')
+
+    try {
+      const croppedPhoto = await getCroppedProfilePicture()
+      const photoURL = await uploadProfilePicture(user.uid, croppedPhoto)
+      await setDocument('Users', user.uid, { photoURL })
+      closeCropModal()
+    } catch (error) {
+      console.error('Error uploading profile picture:', error)
+      setPhotoStatusMessage('Could not upload profile picture. Please try again.')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   const asArray = (value) => (Array.isArray(value) ? value : [])
   const name = user?.displayName || userData?.name || 'Freelancer SV'
   const initials = name.charAt(0).toUpperCase()
+  const profilePhotoURL = userData?.photoURL || ''
+  const previewSize = 280
+  const previewGeometry = photoDimensions
+    ? (() => {
+        const baseScale = Math.max(previewSize / photoDimensions.width, previewSize / photoDimensions.height)
+        const scale = baseScale * cropZoom
+        const scaledWidth = photoDimensions.width * scale
+        const scaledHeight = photoDimensions.height * scale
+        const maxOffsetX = Math.max(0, (scaledWidth - previewSize) / 2)
+        const maxOffsetY = Math.max(0, (scaledHeight - previewSize) / 2)
+
+        return {
+          width: scaledWidth,
+          height: scaledHeight,
+          maxOffsetX,
+          maxOffsetY,
+          left: (previewSize - scaledWidth) / 2 + (cropOffsetX / 100) * maxOffsetX,
+          top: (previewSize - scaledHeight) / 2 + (cropOffsetY / 100) * maxOffsetY
+        }
+      })()
+    : null
+
+  const clampCropOffset = (value) => Math.max(-100, Math.min(100, value))
+
+  const handlePhotoDragStart = (event) => {
+    if (uploadingPhoto || !previewGeometry) return
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragStartRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      offsetX: cropOffsetX,
+      offsetY: cropOffsetY,
+      maxOffsetX: previewGeometry.maxOffsetX,
+      maxOffsetY: previewGeometry.maxOffsetY
+    }
+    setIsDraggingPhoto(true)
+  }
+
+  const handlePhotoDragMove = (event) => {
+    const dragStart = dragStartRef.current
+
+    if (!dragStart || dragStart.pointerId !== event.pointerId) return
+
+    const nextOffsetX = dragStart.maxOffsetX
+      ? dragStart.offsetX + ((event.clientX - dragStart.x) / dragStart.maxOffsetX) * 100
+      : 0
+    const nextOffsetY = dragStart.maxOffsetY
+      ? dragStart.offsetY + ((event.clientY - dragStart.y) / dragStart.maxOffsetY) * 100
+      : 0
+
+    setCropOffsetX(clampCropOffset(nextOffsetX))
+    setCropOffsetY(clampCropOffset(nextOffsetY))
+  }
+
+  const handlePhotoDragEnd = (event) => {
+    if (dragStartRef.current?.pointerId === event.pointerId) {
+      dragStartRef.current = null
+      setIsDraggingPhoto(false)
+    }
+  }
   const skills = asArray(userData?.skills)
   const experience = asArray(userData?.experience)
   const projects = asArray(userData?.projects)
@@ -123,6 +326,69 @@ function Home() {
         {text}
       </Typography>
     </Box>
+    )
+
+  const editableAvatar = ({ size, fontSize, border }) => (
+    <Box
+      component="label"
+      tabIndex={uploadingPhoto ? -1 : 0}
+      aria-label="Update profile picture"
+      sx={{
+        position: 'relative',
+        display: 'inline-flex',
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        cursor: uploadingPhoto ? 'default' : 'pointer',
+        overflow: 'hidden',
+        '&:hover .profile-avatar-overlay, &:focus-visible .profile-avatar-overlay': {
+          opacity: 1
+        }
+      }}
+    >
+      <Avatar
+        src={profilePhotoURL}
+        alt={name}
+        sx={{
+          width: '100%',
+          height: '100%',
+          fontSize,
+          bgcolor: svPalette.pupusaCorn,
+          color: svPalette.deepBlue,
+          fontWeight: 900,
+          border
+        }}
+      >
+        {initials}
+      </Avatar>
+      <Box
+        className="profile-avatar-overlay"
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'grid',
+          placeItems: 'center',
+          px: 1,
+          textAlign: 'center',
+          bgcolor: 'rgba(11, 47, 102, 0.74)',
+          color: 'white',
+          fontSize: { xs: 10, sm: 11 },
+          fontWeight: 900,
+          lineHeight: 1.15,
+          opacity: uploadingPhoto ? 1 : 0,
+          transition: 'opacity 160ms ease'
+        }}
+      >
+        {uploadingPhoto ? 'Uploading...' : 'Update profile picture'}
+      </Box>
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        disabled={uploadingPhoto}
+        onChange={handleProfilePictureUpload}
+      />
+    </Box>
   )
 
   const renderItems = (items, emptyText) =>
@@ -152,6 +418,218 @@ function Home() {
     ) : (
       emptyBlock(emptyText)
     )
+
+  const photoCropModal = (
+    <Modal
+      open={cropModalOpen}
+      onClose={uploadingPhoto ? undefined : closeCropModal}
+      aria-labelledby="profile-photo-crop-title"
+      aria-describedby="profile-photo-crop-description"
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: { xs: 'calc(100% - 32px)', sm: 520 },
+          maxWidth: '100%',
+          maxHeight: 'calc(100svh - 32px)',
+          overflowY: 'auto',
+          p: { xs: 2.5, sm: 3.5 },
+          borderRadius: 2,
+          border: `1px solid ${svPalette.borderBlue}`,
+          bgcolor: 'white',
+          boxShadow: '0 24px 80px rgba(11, 47, 102, 0.24)',
+          outline: 0
+        }}
+      >
+        <Stack spacing={2.5}>
+          <Box>
+            <Typography
+              id="profile-photo-crop-title"
+              variant="h6"
+              fontWeight={950}
+              color={svPalette.deepBlue}
+            >
+              Adjust profile picture
+            </Typography>
+            <Typography
+              id="profile-photo-crop-description"
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              The saved image will be a centered {profilePictureSize} x {profilePictureSize} pixel square.
+            </Typography>
+          </Box>
+
+          <Box
+            aria-label="Profile picture preview"
+            onPointerDown={handlePhotoDragStart}
+            onPointerMove={handlePhotoDragMove}
+            onPointerUp={handlePhotoDragEnd}
+            onPointerCancel={handlePhotoDragEnd}
+            sx={{
+              width: previewSize,
+              height: previewSize,
+              mx: 'auto',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              position: 'relative',
+              bgcolor: '#f6fbfc',
+              border: `4px solid ${svPalette.pupusaCorn}`,
+              boxShadow: '0 12px 32px rgba(11, 47, 102, 0.18)',
+              cursor: uploadingPhoto ? 'default' : isDraggingPhoto ? 'grabbing' : 'grab',
+              touchAction: 'none'
+            }}
+          >
+            {photoPreviewURL && previewGeometry && (
+              <Box
+                component="img"
+                src={photoPreviewURL}
+                alt="Profile preview"
+                sx={{
+                  position: 'absolute',
+                  width: previewGeometry.width,
+                  height: previewGeometry.height,
+                  left: previewGeometry.left,
+                  top: previewGeometry.top,
+                  maxWidth: 'none',
+                  userSelect: 'none',
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+          </Box>
+
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="body2" fontWeight={850} color={svPalette.deepBlue}>
+                Zoom
+              </Typography>
+              <Slider
+                value={cropZoom}
+                min={1}
+                max={3}
+                step={0.01}
+                onChange={(_, value) => setCropZoom(value)}
+                disabled={uploadingPhoto}
+                sx={{ color: svPalette.flagBlue }}
+              />
+            </Box>
+          </Stack>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="flex-end">
+            <Button
+              variant="outlined"
+              onClick={closeCropModal}
+              disabled={uploadingPhoto}
+              sx={{
+                borderColor: svPalette.borderBlue,
+                color: svPalette.deepBlue,
+                textTransform: 'none',
+                fontWeight: 900,
+                borderRadius: 2
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={saveCroppedProfilePicture}
+              disabled={uploadingPhoto}
+              sx={{
+                bgcolor: svPalette.flagBlue,
+                textTransform: 'none',
+                fontWeight: 900,
+                borderRadius: 2,
+                '&:hover': { bgcolor: svPalette.deepBlue }
+              }}
+            >
+              {uploadingPhoto ? 'Saving...' : 'Save picture'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    </Modal>
+  )
+
+  const photoStatusModal = (
+    <Modal
+      open={Boolean(photoStatusMessage)}
+      onClose={() => setPhotoStatusMessage('')}
+      aria-labelledby="profile-photo-status-title"
+      aria-describedby="profile-photo-status-description"
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: { xs: 'calc(100% - 32px)', sm: 420 },
+          maxWidth: '100%',
+          p: { xs: 3, sm: 3.5 },
+          borderRadius: 2,
+          border: '1px solid rgba(217, 74, 50, 0.28)',
+          bgcolor: 'white',
+          boxShadow: '0 24px 80px rgba(11, 47, 102, 0.24)',
+          outline: 0
+        }}
+      >
+        <Stack spacing={2.25} alignItems="center" textAlign="center">
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: '#fff0ed',
+              color: svPalette.curtidoRed
+            }}
+          >
+            <Warning sx={{ fontSize: 38 }} />
+          </Box>
+          <Box>
+            <Typography
+              id="profile-photo-status-title"
+              variant="h6"
+              fontWeight={950}
+              color={svPalette.deepBlue}
+              gutterBottom
+            >
+              Upload failed
+            </Typography>
+            <Typography
+              id="profile-photo-status-description"
+              variant="body2"
+              color="text.secondary"
+            >
+              {photoStatusMessage}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={() => setPhotoStatusMessage('')}
+            sx={{
+              bgcolor: svPalette.flagBlue,
+              textTransform: 'none',
+              fontWeight: 900,
+              borderRadius: 2,
+              px: 4,
+              '&:hover': {
+                bgcolor: svPalette.deepBlue
+              }
+            }}
+          >
+            Got it
+          </Button>
+        </Stack>
+      </Box>
+    </Modal>
+  )
 
   const updatePanel = (
     <Paper
@@ -255,20 +733,11 @@ function Home() {
   
                 <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
                   <Grid item>
-                    <Avatar
-                      src={user?.photoURL || userData.photoURL || ''}
-                      alt={name}
-                      sx={{
-                        width: { xs: 88, md: 112 },
-                        height: { xs: 88, md: 112 },
-                        fontSize: 44,
-                        bgcolor: svPalette.pupusaCorn,
-                        color: svPalette.deepBlue,
-                        border: '4px solid rgba(255,255,255,0.92)'
-                      }}
-                    >
-                      {initials}
-                    </Avatar>
+                    {editableAvatar({
+                      size: { xs: 88, md: 112 },
+                      fontSize: 44,
+                      border: '4px solid rgba(255,255,255,0.92)'
+                    })}
                   </Grid>
                   <Grid item xs={12} sm>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
@@ -485,6 +954,8 @@ function Home() {
           Loading home profile...
         </Typography>
       )}
+      {photoCropModal}
+      {photoStatusModal}
     </Box>
   )
 }

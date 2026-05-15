@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AccountCircle,
   Logout,
   Menu as MenuIcon,
   PersonSearch,
@@ -20,14 +19,32 @@ import {
   Tooltip,
   Typography
 } from '@mui/material'
+import { listenToDocument } from '../../firebase/firestoreService'
 import { useLogout } from '../../hooks/useLogout'
 import { svPalette } from '../../styles/designTokens'
 
 function Navbar({ user }) {
   const [anchorElNav, setAnchorElNav] = React.useState(null)
   const [anchorElUser, setAnchorElUser] = React.useState(null)
+  const [navbarProfile, setNavbarProfile] = React.useState({ uid: null, data: null })
   const navigate = useNavigate()
   const handleLogout = useLogout()
+
+  React.useEffect(() => {
+    if (!user?.uid) {
+      return undefined
+    }
+
+    return listenToDocument(
+      'Users',
+      user.uid,
+      (data) => setNavbarProfile({ uid: user.uid, data }),
+      (error) => {
+        console.error('Error fetching navbar profile:', error)
+        setNavbarProfile({ uid: user.uid, data: null })
+      }
+    )
+  }, [user?.uid])
 
   const pages = user
     ? [
@@ -46,6 +63,11 @@ function Navbar({ user }) {
     action()
     handleCloseNavMenu()
   }
+
+  const profileData = navbarProfile.uid === user?.uid ? navbarProfile.data : null
+  const profilePhotoURL = profileData?.photoURL || ''
+  const profileName = profileData?.name || user?.displayName || 'User'
+  const profileInitial = profileName.charAt(0).toUpperCase()
 
   return (
     <AppBar
@@ -86,17 +108,7 @@ function Navbar({ user }) {
             >
               <Work fontSize="small" />
             </Box>
-            <Box sx={{ textAlign: 'left', display: { xs: 'none', sm: 'block' } }}>
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 950, lineHeight: 1, letterSpacing: 0, color: 'white' }}
-              >
-                Trabajos Locales SV
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-                Tu portal de trabajos freelance en El Salvador
-              </Typography>
-            </Box>
+
           </Box>
 
           {user && (
@@ -172,11 +184,16 @@ function Navbar({ user }) {
               <Tooltip title="Account menu">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar
-                    alt={user?.displayName || 'User'}
-                    src={user?.photoURL || ''}
-                    sx={{ border: '2px solid rgba(255,255,255,0.75)' }}
+                    alt={profileName}
+                    src={profilePhotoURL}
+                    sx={{
+                      border: '2px solid rgba(255,255,255,0.75)',
+                      bgcolor: svPalette.pupusaCorn,
+                      color: svPalette.deepBlue,
+                      fontWeight: 900
+                    }}
                   >
-                    <AccountCircle />
+                    {profileInitial}
                   </Avatar>
                 </IconButton>
               </Tooltip>

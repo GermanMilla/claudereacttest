@@ -113,6 +113,8 @@ function Profile() {
     )
 
   const name = profileData?.name || 'Freelancer SV'
+  const initials = name.charAt(0).toUpperCase()
+  const profilePhotoURL = profileData?.photoURL || ''
   const skills = asArray(profileData?.skills)
 
   return (
@@ -157,7 +159,7 @@ function Profile() {
                 <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
                   <Grid item>
                     <Avatar
-                      src={profileData.photoURL || ''}
+                      src={profilePhotoURL}
                       alt={name}
                       sx={{
                         width: { xs: 88, md: 112 },
@@ -168,7 +170,7 @@ function Profile() {
                         border: '4px solid rgba(255,255,255,0.92)'
                       }}
                     >
-                      {name.charAt(0).toUpperCase()}
+                      {initials}
                     </Avatar>
                   </Grid>
                   <Grid item xs={12} sm>
