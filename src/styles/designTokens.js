@@ -17,6 +17,6 @@ export const svPalette = {
 
 export const svGradients = {
   page: `linear-gradient(135deg, ${svPalette.paper} 0%, ${svPalette.paperCool} 48%, ${svPalette.paperWarm} 100%)`,
-  flagHeader: `linear-gradient(135deg, ${svPalette.deepBlue} 0%, ${svPalette.flagBlue} 50%, ${svPalette.torogozTeal} 100%)`,
+  flagHeader: `linear-gradient(90deg, ${svPalette.izalcoBlack} 0%, ${svPalette.flagBlue} 60%, ${svPalette.torogozTeal} 100%)`,
   //mangoGlow: `radial-gradient(circle at 14% 12%, rgba(242, 169, 27, 0.34), transparent 24%), linear-gradient(135deg, ${svPalette.paper} 0%, ${svPalette.paperCool} 48%, ${svPalette.paperWarm} 100%)`
 }

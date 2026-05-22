@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import {
+  Add,
   AlternateEmail,
   CheckCircle,
+  Delete,
   LocationOn,
   Public,
   Save,
@@ -13,30 +15,45 @@ import {
   Avatar,
   Box,
   Button,
+  Checkbox,
   Chip,
   Divider,
+  FormControlLabel,
   Grid,
+  IconButton,
   Link,
   Modal,
   Paper,
   Slider,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material'
 import { listenToDocument, setDocument } from '../../firebase/firestoreService'
 import { uploadProfilePicture } from '../../firebase/storageService'
 import { setProfile, clearProfile, profileError } from '../../store/profileSlice'
 import { svGradients, svPalette } from '../../styles/designTokens'
+import FormattedText from '../RichText/FormattedText'
+import RichTextToolbar from '../RichText/RichTextToolbar'
 
 function Home() {
   const { user } = useSelector((state) => state.auth)
   const userData = useSelector((state) => state.profile.profile)
 
   const [profileMissing, setProfileMissing] = useState(false)
-  const [newFieldKey, setNewFieldKey] = useState('')
-  const [newFieldValue, setNewFieldValue] = useState('')
-  const [statusMessage, setStatusMessage] = useState('')
+  const [pitch, setPitch] = useState('')
+  const [pitchStatusMessage, setPitchStatusMessage] = useState('')
+  const [experienceStatusMessage, setExperienceStatusMessage] = useState('')
+  const [experienceForm, setExperienceForm] = useState({
+    role: '',
+    company: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    current: false,
+    description: ''
+  })
   const [photoStatusMessage, setPhotoStatusMessage] = useState('')
   const [photoPreviewURL, setPhotoPreviewURL] = useState('')
   const [photoDimensions, setPhotoDimensions] = useState(null)
@@ -50,6 +67,8 @@ function Home() {
 
   const dispatch = useDispatch()
   const dragStartRef = useRef(null)
+  const pitchInputRef = useRef(null)
+  const experienceDescriptionRef = useRef(null)
   const profilePictureSize = 512
 
   useEffect(() => {
@@ -87,27 +106,114 @@ function Home() {
     }
   }, [photoPreviewURL])
 
-  const saveProfileField = async () => {
-    if (!newFieldKey.trim()) {
-      setStatusMessage('Please enter a profile key.')
+
+  const savePitch = async () => {
+    const trimmedPitch = pitch.trim()
+
+    if (!trimmedPitch) {
+      setPitchStatusMessage('Please add your pitch before saving.')
       return
     }
 
     setSaving(true)
-    setStatusMessage('')
+    setPitchStatusMessage('')
 
     try {
       await setDocument('Users', user.uid, {
-        public: {
-          [newFieldKey.trim()]: newFieldValue
-        }
+        public: { pitch: trimmedPitch }
       })
-      setStatusMessage('Profile field saved successfully.')
-      setNewFieldKey('')
-      setNewFieldValue('')
+      setPitch('')
+      setPitchStatusMessage('Pitch saved successfully.')
     } catch (error) {
-      console.error('Error saving profile field:', error)
-      setStatusMessage('Could not save profile field. Please try again.')
+      console.error('Error saving pitch:', error)
+      setPitchStatusMessage('Could not save pitch. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const sortExperiencesDescending = (items) =>
+    [...items].sort((first, second) => {
+      const firstDate = first.current ? '9999-12' : first.endDate || first.startDate || ''
+      const secondDate = second.current ? '9999-12' : second.endDate || second.startDate || ''
+
+      return secondDate.localeCompare(firstDate)
+    })
+
+  const updateExperienceForm = (field, value) => {
+    setExperienceForm((current) => ({
+      ...current,
+      [field]: value
+    }))
+  }
+
+  const resetExperienceForm = () => {
+    setExperienceForm({
+      role: '',
+      company: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      current: false,
+      description: ''
+    })
+  }
+
+  const saveExperience = async () => {
+    const role = experienceForm.role.trim()
+    const company = experienceForm.company.trim()
+
+    if (!role || !company) {
+      setExperienceStatusMessage('Please add at least a role and company.')
+      return
+    }
+
+    setSaving(true)
+    setExperienceStatusMessage('')
+
+    const nextExperience = {
+      id: `${new Date().toISOString()}`,
+      role,
+      company,
+      location: experienceForm.location.trim(),
+      startDate: experienceForm.startDate,
+      endDate: experienceForm.current ? '' : experienceForm.endDate,
+      current: experienceForm.current,
+      description: experienceForm.description.trim()
+    }
+
+    try {
+      const currentExperiences = asArray(userData?.experiences || userData?.experience)
+      const experiences = sortExperiencesDescending([...currentExperiences, nextExperience])
+
+      await setDocument('Users', user.uid, {
+        public: { experiences }
+      })
+      resetExperienceForm()
+      setExperienceStatusMessage('Experience saved successfully.')
+    } catch (error) {
+      console.error('Error saving experience:', error)
+      setExperienceStatusMessage('Could not save experience. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteExperience = async (experienceId) => {
+    setSaving(true)
+    setExperienceStatusMessage('')
+
+    try {
+      const experiences = asArray(userData?.experiences || userData?.experience)
+        .filter((item) => item.id !== experienceId)
+
+      await setDocument('Users', user.uid, {
+        public: { experiences }
+      })
+      setExperienceStatusMessage('Experience removed.')
+    } catch (error) {
+      console.error('Error removing experience:', error)
+      setExperienceStatusMessage('Could not remove experience. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -301,13 +407,14 @@ function Home() {
     }
   }
   const skills = asArray(userData?.skills)
-  const experience = asArray(userData?.experience)
+  const experiences = sortExperiencesDescending(asArray(userData?.experiences || userData?.experience))
   const projects = asArray(userData?.projects)
   const education = asArray(userData?.education)
+  const profilePitch = userData?.pitch || userData?.summary || ''
   const completedSections = [
-    userData?.summary,
+    profilePitch,
     skills.length,
-    experience.length,
+    experiences.length,
     projects.length,
     userData?.email || user?.email
   ].filter(Boolean).length
@@ -415,9 +522,96 @@ function Home() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
               {[item.company, item.location, item.date || item.year].filter(Boolean).join(' | ')}
             </Typography>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: svPalette.mutedInk }}>
-              {item.details || item.description || item.summary || ''}
-            </Typography>
+            <FormattedText
+              text={item.details || item.description || item.summary || ''}
+              color={svPalette.mutedInk}
+              sx={{ mt: 1 }}
+            />
+          </Box>
+        ))}
+      </Stack>
+    ) : (
+      emptyBlock(emptyText)
+    )
+
+  const formatExperienceDates = (item) =>
+    [
+      item.startDate || 'Start date',
+      item.current ? 'Present' : item.endDate || 'End date'
+    ].join(' - ')
+
+  const renderExperienceTimeline = (items, emptyText) =>
+    asArray(items).length > 0 ? (
+      <Stack spacing={0}>
+        {asArray(items).map((item, index) => (
+          <Box
+            key={`${item.id || item.role || item.company || index}-${index}`}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '28px minmax(0, 1fr)',
+              columnGap: 2,
+              position: 'relative'
+            }}
+          >
+            <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+              <Box
+                sx={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  mt: 0.65,
+                  bgcolor: index === 0 ? svPalette.flagBlue : 'white',
+                  border: `3px solid ${index === 0 ? svPalette.flagBlue : svPalette.mangoGreen}`,
+                  zIndex: 1
+                }}
+              />
+              {index < asArray(items).length - 1 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 18,
+                    bottom: 0,
+                    width: 2,
+                    bgcolor: 'rgba(21, 88, 214, 0.18)'
+                  }}
+                />
+              )}
+            </Box>
+            <Box sx={{ pb: index < asArray(items).length - 1 ? 3 : 0 }}>
+              <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={900} color={svPalette.ink}>
+                    {item.role || item.title || 'Untitled role'}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={800} color={svPalette.mutedInk}>
+                    {[item.company, item.location].filter(Boolean).join(' | ')}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {formatExperienceDates(item)}
+                  </Typography>
+                </Box>
+                {item.id && (
+                  <Tooltip title="Remove experience">
+                    <IconButton
+                      type="button"
+                      aria-label="remove experience"
+                      size="small"
+                      onClick={() => deleteExperience(item.id)}
+                      disabled={saving}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Stack>
+              {item.description || item.details || item.summary ? (
+                <FormattedText
+                  text={item.description || item.details || item.summary}
+                  color={svPalette.mutedInk}
+                  sx={{ mt: 1 }}
+                />
+              ) : null}
+            </Box>
           </Box>
         ))}
       </Stack>
@@ -637,7 +831,9 @@ function Home() {
     </Modal>
   )
 
-  const updatePanel = (
+
+
+  const experiencePanel = (
     <Paper
       elevation={0}
       sx={{
@@ -647,40 +843,113 @@ function Home() {
         bgcolor: 'rgba(255, 255, 255, 0.88)'
       }}
     >
-      <Typography variant="h6" fontWeight={900} color={svPalette.deepBlue}>
-        Quick profile update
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 2 }}>
-        Add one Firestore field while you keep shaping the prototype. Use keys like skills,
-        title, summary, location, projects, or experience.
-      </Typography>
-      <Stack spacing={2}>
-        <TextField
-          label="Profile field key"
-          value={newFieldKey}
-          onChange={(event) => setNewFieldKey(event.target.value)}
-          fullWidth
-        />
-        <TextField
-          label="Profile field value"
-          value={newFieldValue}
-          onChange={(event) => setNewFieldValue(event.target.value)}
-          fullWidth
-          multiline
-          minRows={2}
-        />
-        {statusMessage && (
+      <Stack spacing={2.25}>
+        <Box>
+          <Typography variant="h6" fontWeight={900} color={svPalette.deepBlue}>
+            Add work experience
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+            Each entry is saved as one object in Firestore at public.experiences.
+          </Typography>
+        </Box>
+
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Role"
+              value={experienceForm.role}
+              onChange={(event) => updateExperienceForm('role', event.target.value)}
+              fullWidth
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Company"
+              value={experienceForm.company}
+              onChange={(event) => updateExperienceForm('company', event.target.value)}
+              fullWidth
+              required
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              label="Location"
+              value={experienceForm.location}
+              onChange={(event) => updateExperienceForm('location', event.target.value)}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Start date"
+              type="month"
+              value={experienceForm.startDate}
+              onChange={(event) => updateExperienceForm('startDate', event.target.value)}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="End date"
+              type="month"
+              value={experienceForm.endDate}
+              onChange={(event) => updateExperienceForm('endDate', event.target.value)}
+              fullWidth
+              disabled={experienceForm.current}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={experienceForm.current}
+                  onChange={(event) => updateExperienceForm('current', event.target.checked)}
+                  sx={{ color: svPalette.flagBlue, '&.Mui-checked': { color: svPalette.flagBlue } }}
+                />
+              }
+              label="I currently work here"
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <Stack spacing={1}>
+              <RichTextToolbar
+                inputRef={experienceDescriptionRef}
+                value={experienceForm.description}
+                onChange={(value) => updateExperienceForm('description', value)}
+              />
+            <TextField
+              label="Description"
+              value={experienceForm.description}
+              onChange={(event) => updateExperienceForm('description', event.target.value)}
+              inputRef={experienceDescriptionRef}
+              fullWidth
+              multiline
+              minRows={3}
+            />
+            </Stack>
+          </Grid>
+        </Grid>
+
+        {experienceStatusMessage && (
           <Typography
             variant="body2"
-            color={statusMessage.includes('successfully') ? 'success.main' : 'error'}
+            color={
+              experienceStatusMessage.includes('successfully') || experienceStatusMessage.includes('removed')
+                ? 'success.main'
+                : 'error'
+            }
           >
-            {statusMessage}
+            {experienceStatusMessage}
           </Typography>
         )}
+
         <Button
           variant="contained"
-          startIcon={<Save />}
-          onClick={saveProfileField}
+          startIcon={<Add />}
+          onClick={saveExperience}
           disabled={saving}
           sx={{
             alignSelf: { xs: 'stretch', sm: 'flex-start' },
@@ -692,7 +961,7 @@ function Home() {
             '&:hover': { bgcolor: svPalette.deepBlue }
           }}
         >
-          {saving ? 'Saving...' : 'Save profile field'}
+          {saving ? 'Saving...' : 'Add experience'}
         </Button>
       </Stack>
     </Paper>
@@ -726,16 +995,7 @@ function Home() {
                 position: 'relative'
               }}
             >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 'auto 24px 24px auto',
-                  width: 180,
-                  height: 180,
-                  borderRadius: '50%',
-                  border: '24px solid rgba(247, 226, 161, 0.24)'
-                }}
-              />
+
   
                 <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
                   <Grid item>
@@ -803,12 +1063,69 @@ function Home() {
                       color={svPalette.ink}
                       sx={{ letterSpacing: 1.4 }}
                     >
-                      Profile pitch
+                      {/*Profile pitch*/}
                     </Typography>
-                    <Typography variant="body1" sx={{ mt: 1, color: svPalette.mutedInk, whiteSpace: 'pre-line' }}>
-                      {userData.summary ||
-                        'Add a focused summary that explains what you solve, the competencies you bring, and the kind of clients you help.'}
-                    </Typography>
+                    {profilePitch ? (
+                      <FormattedText
+                        text={profilePitch}
+                        variant="body1"
+                        color={svPalette.mutedInk}
+                        sx={{ mt: 1 }}
+                      />
+                    ) : (
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          mt: 1.5,
+                          p: 2,
+                          borderRadius: 2,
+                          border: `1px solid ${svPalette.borderBlue}`,
+                          bgcolor: '#f6fbfc'
+                        }}
+                      >
+                        <Stack spacing={1.5}>
+                          <Typography variant="body2" color="text.secondary">
+                            Add a focused pitch that explains what you solve, the competencies you bring,
+                            and the kind of clients you help.
+                          </Typography>
+                          <RichTextToolbar inputRef={pitchInputRef} value={pitch} onChange={setPitch} />
+                          <TextField
+                            label="Profile pitch"
+                            value={pitch}
+                            onChange={(event) => setPitch(event.target.value)}
+                            inputRef={pitchInputRef}
+                            fullWidth
+                            multiline
+                            minRows={4}
+                          />
+                          {pitchStatusMessage && (
+                            <Typography
+                              variant="body2"
+                              color={pitchStatusMessage.includes('successfully') ? 'success.main' : 'error'}
+                            >
+                              {pitchStatusMessage}
+                            </Typography>
+                          )}
+                          <Button
+                            variant="contained"
+                            startIcon={<Save />}
+                            onClick={savePitch}
+                            disabled={saving}
+                            sx={{
+                              alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                              bgcolor: svPalette.flagBlue,
+                              textTransform: 'none',
+                              fontWeight: 800,
+                              borderRadius: 2,
+                              px: 3,
+                              '&:hover': { bgcolor: svPalette.deepBlue }
+                            }}
+                          >
+                            {saving ? 'Saving...' : 'Save pitch'}
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    )}
                   </Box>
 
                   <Divider />
@@ -817,8 +1134,8 @@ function Home() {
                     <Typography variant="h5" fontWeight={950} color={svPalette.deepBlue} gutterBottom>
                       Work experience
                     </Typography>
-                    {renderItems(
-                      experience,
+                    {renderExperienceTimeline(
+                      experiences,
                       'Add experience entries to help clients understand your real-world practice.'
                     )}
                   </Box>
@@ -940,7 +1257,9 @@ function Home() {
             </Box>
           </Paper>
 
-          <Box sx={{ mt: 3 }}>{updatePanel}</Box>
+          <Stack spacing={3} sx={{ mt: 3 }}>
+            {experiencePanel}
+          </Stack>
         </Box>
       ) : profileMissing ? (
         <Box sx={{ maxWidth: 760, mx: 'auto' }}>
@@ -952,7 +1271,10 @@ function Home() {
               Create the first field for your competency-based profile. Clients will be able to
               view public profiles without signing in.
             </Typography>
-            {updatePanel}
+            <Stack spacing={3}>
+              {experiencePanel}
+
+            </Stack>
           </Paper>
         </Box>
       ) : (

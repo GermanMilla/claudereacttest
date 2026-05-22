@@ -4,98 +4,7 @@ import { svPalette, svGradients } from '../../styles/designTokens';
 import { listenToCollectionPath } from '../../firebase/firestoreService';
 import CreateNewBlog from './CreateNewBlog';
 import { useSelector } from 'react-redux'
-
-const renderInlineFormatting = (text) => {
-  const parts = text.split(/(\*\*.+?\*\*|\*.+?\*|~~.+?~~)/g)
-
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
-    }
-
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={`${part}-${index}`}>{part.slice(1, -1)}</em>
-    }
-
-    if (part.startsWith('~~') && part.endsWith('~~')) {
-      return <s key={`${part}-${index}`}>{part.slice(2, -2)}</s>
-    }
-
-    return part
-  })
-}
-
-const renderBlogBody = (body = '') => {
-  const lines = body.split('\n')
-  const blocks = []
-  let bulletItems = []
-  let numberedItems = []
-
-  const flushBulletItems = () => {
-    if (!bulletItems.length) {
-      return
-    }
-
-    blocks.push(
-      <Box component="ul" key={`list-${blocks.length}`} sx={{ my: 1, pl: 3 }}>
-        {bulletItems.map((item, index) => (
-          <li key={`${item}-${index}`}>{renderInlineFormatting(item)}</li>
-        ))}
-      </Box>
-    )
-    bulletItems = []
-  }
-
-  const flushNumberedItems = () => {
-    if (!numberedItems.length) {
-      return
-    }
-
-    blocks.push(
-      <Box component="ol" key={`numbered-list-${blocks.length}`} sx={{ my: 1, pl: 3 }}>
-        {numberedItems.map((item, index) => (
-          <li key={`${item}-${index}`}>{renderInlineFormatting(item)}</li>
-        ))}
-      </Box>
-    )
-    numberedItems = []
-  }
-
-  lines.forEach((line, index) => {
-    const bulletMatch = line.match(/^\s*[-*]\s+(.+)$/)
-    const numberedMatch = line.match(/^\s*\d+\.\s+(.+)$/)
-
-    if (bulletMatch) {
-      flushNumberedItems()
-      bulletItems.push(bulletMatch[1])
-      return
-    }
-
-    if (numberedMatch) {
-      flushBulletItems()
-      numberedItems.push(numberedMatch[1])
-      return
-    }
-
-    flushBulletItems()
-    flushNumberedItems()
-
-    if (!line.trim()) {
-      blocks.push(<Box key={`space-${index}`} sx={{ height: 8 }} />)
-      return
-    }
-
-    blocks.push(
-      <Typography key={`paragraph-${index}`} variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        {renderInlineFormatting(line)}
-      </Typography>
-    )
-  })
-
-  flushBulletItems()
-  flushNumberedItems()
-  return blocks
-}
+import FormattedText from '../RichText/FormattedText'
 
 function Blogs() {
 
@@ -157,8 +66,8 @@ function Blogs() {
                 <Typography variant="h5" fontWeight={800} color={svPalette.deepBlue} gutterBottom>
                   {blog.title} <Typography variant="subtitle2" color="text.secondary" component="span">Created on: {blog.id}</Typography>
                 </Typography>
-                <Box sx={{ color: 'text.secondary', mb: 2 }}>
-                  {renderBlogBody(blog.body)}
+                <Box sx={{ mb: 2 }}>
+                  <FormattedText text={blog.body} />
                 </Box>
               </Paper>
             ))}

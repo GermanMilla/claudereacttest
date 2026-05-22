@@ -24,6 +24,7 @@ import {
 import { listenToDocument } from '../../firebase/firestoreService'
 import { setProfile, clearProfile, profileError } from '../../store/profileSlice'
 import { svGradients, svPalette } from '../../styles/designTokens'
+import FormattedText from '../RichText/FormattedText'
 
 function Profile() {
   const { uid } = useParams()
@@ -31,7 +32,7 @@ function Profile() {
   const [profileLoaded, setProfileLoaded] = useState(false)
   const dispatch = useDispatch()
 
-  
+
 
   useEffect(() => {
     if (!uid) {
@@ -104,11 +105,21 @@ function Profile() {
               {item.title || item.role || item.school || item.name || 'Untitled'}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
-              {[item.company, item.location, item.date || item.year].filter(Boolean).join(' | ')}
+              {[
+                item.company,
+                item.location,
+                item.date || item.year || (
+                  item.startDate
+                    ? `${item.startDate} - ${item.current ? 'Present' : item.endDate || 'End date'}`
+                    : ''
+                )
+              ].filter(Boolean).join(' | ')}
             </Typography>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: svPalette.mutedInk }}>
-              {item.details || item.description || item.summary || ''}
-            </Typography>
+            <FormattedText
+              text={item.description || item.details || item.summary || ''}
+              color={svPalette.mutedInk}
+              sx={{ mt: 1 }}
+            />
           </Box>
         ))}
       </Stack>
@@ -120,6 +131,7 @@ function Profile() {
   const initials = name.charAt(0).toUpperCase()
   const profilePhotoURL = profileData?.photoURL || ''
   const skills = asArray(profileData?.skills)
+  const profilePitch = profileData?.pitch || profileData?.summary || ''
 
   return (
     <Box
@@ -127,7 +139,7 @@ function Profile() {
         minHeight: 'calc(100svh - 64px)',
         px: { xs: 2, md: 4 },
         py: { xs: 3, md: 5 },
-        background: svGradients.mangoGlow
+        background: svGradients.page
       }}
     >
       {profileData ? (
@@ -149,75 +161,65 @@ function Profile() {
                 position: 'relative'
               }}
             >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 'auto 24px 24px auto',
-                  width: 180,
-                  height: 180,
-                  borderRadius: '50%',
-                  border: '24px solid rgba(247, 226, 161, 0.24)'
-                }}
-              />
 
-                <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
-                  <Grid item>
-                    <Avatar
-                      src={profilePhotoURL}
-                      alt={name}
-                      sx={{
-                        width: { xs: 88, md: 112 },
-                        height: { xs: 88, md: 112 },
-                        fontSize: 44,
-                        bgcolor: svPalette.pupusaCorn,
-                        color: svPalette.deepBlue,
-                        border: '4px solid rgba(255,255,255,0.92)'
-                      }}
-                    >
-                      {initials}
-                    </Avatar>
-                  </Grid>
-                  <Grid item xs={12} sm>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                      <Typography variant="subtitle2" fontWeight={950}>
-                        Public freelancer profile
-                      </Typography>
-                      <Chip
-                        label="Competency-based"
-                        size="small"
-                        sx={{
-                          height: 24,
-                          bgcolor: 'rgba(255,255,255,0.2)',
-                          color: 'white',
-                          fontWeight: 900
-                        }}
-                      />
-                    </Stack>
-                    <Typography
-                      variant="h2"
-                      component="h1"
-                      fontWeight={500}
-                      sx={{ lineHeight: 1, letterSpacing: 0, textShadow: '0 1px 0 rgba(11,47,102,0.28)' }}
-                    >
-                      {name}
-                    </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.98, mt: 1.5, fontWeight: 500 }}>
-                      {profileData.title || 'Independent professional'}
-                    </Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2.5 }}>
-                      <Stack direction="row" spacing={0.75} alignItems="center">
-                        <LocationOn fontSize="small" />
-                        <Typography variant="body2">{profileData.location || 'El Salvador'}</Typography>
-                      </Stack>
-                      {profileData.email && (
-                        <Stack direction="row" spacing={0.75} alignItems="center">
-                          <AlternateEmail fontSize="small" />
-                          <Typography variant="body2">{profileData.email}</Typography>
-                        </Stack>
-                      )}
-                    </Stack>
-                  </Grid>
+              <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="center">
+                <Grid item>
+                  <Avatar
+                    src={profilePhotoURL}
+                    alt={name}
+                    sx={{
+                      width: { xs: 88, md: 112 },
+                      height: { xs: 88, md: 112 },
+                      fontSize: 44,
+                      bgcolor: svPalette.pupusaCorn,
+                      color: svPalette.deepBlue,
+                      border: '4px solid rgba(255,255,255,0.92)'
+                    }}
+                  >
+                    {initials}
+                  </Avatar>
                 </Grid>
+                <Grid item xs={12} sm>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={950}>
+                      Public freelancer profile
+                    </Typography>
+                    <Chip
+                      label="Competency-based"
+                      size="small"
+                      sx={{
+                        height: 24,
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: 'white',
+                        fontWeight: 900
+                      }}
+                    />
+                  </Stack>
+                  <Typography
+                    variant="h2"
+                    component="h1"
+                    fontWeight={500}
+                    sx={{ lineHeight: 1, letterSpacing: 0, textShadow: '0 1px 0 rgba(11,47,102,0.28)' }}
+                  >
+                    {name}
+                  </Typography>
+                  <Typography variant="h6" sx={{ opacity: 0.98, mt: 1.5, fontWeight: 500 }}>
+                    {profileData.title || 'Independent professional'}
+                  </Typography>
+                  <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2.5 }}>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <LocationOn fontSize="small" />
+                      <Typography variant="body2">{profileData.location || 'El Salvador'}</Typography>
+                    </Stack>
+                    {profileData.email && (
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <AlternateEmail fontSize="small" />
+                        <Typography variant="body2">{profileData.email}</Typography>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Grid>
+              </Grid>
             </Box>
 
             <Box
@@ -238,10 +240,19 @@ function Profile() {
                     >
                       Client-ready pitch
                     </Typography>
-                    <Typography variant="body1" sx={{ mt: 1, color: svPalette.mutedInk, whiteSpace: 'pre-line' }}>
-                      {profileData.summary ||
-                        'This professional is still writing their profile summary. Check back soon for their pitch, competencies, and portfolio proof.'}
-                    </Typography>
+                    {profilePitch ? (
+                      <FormattedText
+                        text={profilePitch}
+                        variant="body1"
+                        color={svPalette.mutedInk}
+                        sx={{ mt: 1 }}
+                      />
+                    ) : (
+                      <Typography variant="body1" sx={{ mt: 1, color: svPalette.mutedInk }}>
+                        This professional is still writing their profile pitch. Check back soon for
+                        their competencies and portfolio proof.
+                      </Typography>
+                    )}
                   </Box>
 
                   <Divider />
@@ -254,7 +265,7 @@ function Profile() {
                       </Typography>
                     </Stack>
                     {renderItems(
-                      profileData.experience,
+                      profileData.experiences || profileData.experience,
                       'Experience entries have not been added yet.'
                     )}
                   </Box>
