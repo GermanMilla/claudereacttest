@@ -31,6 +31,8 @@ function Profile() {
   const [profileLoaded, setProfileLoaded] = useState(false)
   const dispatch = useDispatch()
 
+  
+
   useEffect(() => {
     if (!uid) {
       dispatch(clearProfile())
@@ -41,8 +43,10 @@ function Profile() {
       'Users',
       uid,
       (data) => {
-        if (data) {
-          dispatch(setProfile(data))
+        const publicProfile = data?.public || {}
+
+        if (Object.keys(publicProfile).length > 0) {
+          dispatch(setProfile(publicProfile))
         } else {
           dispatch(clearProfile())
         }

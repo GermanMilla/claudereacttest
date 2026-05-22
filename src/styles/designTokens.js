@@ -11,7 +11,8 @@ export const svPalette = {
   paperCool: '#f4fbff',
   ink: '#172033',
   mutedInk: '#39445a',
-  borderBlue: 'rgba(21, 88, 214, 0.18)'
+  borderBlue: 'rgba(21, 88, 214, 0.18)',
+  izalcoBlack: 'rgba(20, 31, 43,1)'
 }
 
 export const svGradients = {

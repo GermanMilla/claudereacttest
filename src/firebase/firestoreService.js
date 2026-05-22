@@ -131,3 +131,31 @@ export const listenToDocument = (collectionName, documentId, callback, errorCall
 
   return unsubscribe
 }
+
+export const listenToDocumentPath = (path, callback, errorCallback) => {
+  const docRef = doc(db, path)
+
+  return onSnapshot(
+    docRef,
+    (docSnap) => callback(docSnap.exists() ? docSnap.data() : null),
+    (error) => {
+      console.error('Error listening to document:', error)
+      errorCallback?.(error)
+    }
+  )
+}
+
+export const listenToCollectionPath = (path, callback, errorCallback) => {
+  const collectionRef = collection(db, path)
+
+  return onSnapshot(
+    collectionRef,
+    (querySnapshot) => {
+      callback(querySnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
+    },
+    (error) => {
+      console.error('Error listening to collection:', error)
+      errorCallback?.(error)
+    }
+  )
+}

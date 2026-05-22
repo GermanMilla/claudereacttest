@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   Logout,
   Menu as MenuIcon,
-  PersonSearch,
   Work
 } from '@mui/icons-material'
 import {
@@ -49,7 +48,8 @@ function Navbar({ user }) {
   const pages = user
     ? [
         { label: 'My profile', action: () => navigate('/home') },
-        { label: 'Public preview', action: () => navigate(`/profile/${user.uid}`) }
+        { label: 'Public preview', action: () => navigate(`/profile/${user.uid}`) },
+        { label: 'Blog', action: () => navigate('/blogs') }
       ]
     : []
 
@@ -57,14 +57,13 @@ function Navbar({ user }) {
   const handleOpenUserMenu = (event) => setAnchorElUser(event.currentTarget)
   const handleCloseNavMenu = () => setAnchorElNav(null)
   const handleCloseUserMenu = () => setAnchorElUser(null)
-  const handleLogin = () => navigate('/login')
 
   const runNavAction = (action) => {
     action()
     handleCloseNavMenu()
   }
 
-  const profileData = navbarProfile.uid === user?.uid ? navbarProfile.data : null
+  const profileData = navbarProfile.uid === user?.uid ? navbarProfile.data?.public : null
   const profilePhotoURL = profileData?.photoURL || ''
   const profileName = profileData?.name || user?.displayName || 'User'
   const profileInitial = profileName.charAt(0).toUpperCase()
@@ -74,7 +73,7 @@ function Navbar({ user }) {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: svPalette.mangoGreen,
+        bgcolor: svPalette.izalcoBlack,
         borderBottom: `4px solid ${svPalette.torogozTeal}`
       }}
     >
@@ -108,7 +107,7 @@ function Navbar({ user }) {
             >
               <Work fontSize="small" />
             </Box>
-
+              
           </Box>
 
           {user && (
@@ -163,23 +162,7 @@ function Navbar({ user }) {
 
           <Box sx={{ flexGrow: user ? 0 : 1 }} />
 
-          {!user ? (
-            <Button
-              variant="contained"
-              startIcon={<PersonSearch />}
-              onClick={handleLogin}
-              sx={{
-                bgcolor: svPalette.mangoGreen,
-                color: 'white',
-                textTransform: 'none',
-                fontWeight: 950,
-                borderRadius: 2,
-                '&:hover': { bgcolor: '#3f551b' }
-              }}
-            >
-              Sign in
-            </Button>
-          ) : (
+          {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Tooltip title="Account menu">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>

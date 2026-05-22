@@ -62,8 +62,10 @@ function Home() {
       'Users',
       user.uid,
       (data) => {
-        if (data) {
-          dispatch(setProfile(data))
+        const publicProfile = data?.public || {}
+
+        if (Object.keys(publicProfile).length > 0) {
+          dispatch(setProfile(publicProfile))
           setProfileMissing(false)
         } else {
           dispatch(clearProfile())
@@ -96,7 +98,9 @@ function Home() {
 
     try {
       await setDocument('Users', user.uid, {
-        [newFieldKey.trim()]: newFieldValue
+        public: {
+          [newFieldKey.trim()]: newFieldValue
+        }
       })
       setStatusMessage('Profile field saved successfully.')
       setNewFieldKey('')
@@ -219,7 +223,9 @@ function Home() {
     try {
       const croppedPhoto = await getCroppedProfilePicture()
       const photoURL = await uploadProfilePicture(user.uid, croppedPhoto)
-      await setDocument('Users', user.uid, { photoURL })
+      await setDocument('Users', user.uid, {
+        public: { photoURL }
+      })
       closeCropModal()
     } catch (error) {
       console.error('Error uploading profile picture:', error)

@@ -7,6 +7,7 @@ import './App.css'
 import Home from './components/Home/Home'
 import Profile from './components/Profile/Profile'
 import Navbar from './components/Navbar/Navbar'
+import Blogs from './components/Blog/Blogs'
 
 function App() {
   const { user, authReady } = useSelector((state) => state.auth)
@@ -37,6 +38,12 @@ function App() {
           path="/profile/:uid"
           element={
               <Profile />
+          }
+        />
+        <Route
+          path="/blogs"
+          element={
+              <Blogs />
           }
         />
         <Route
